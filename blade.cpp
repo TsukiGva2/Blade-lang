@@ -359,18 +359,26 @@ std::string _id(std::vector<std::string> args){
 	return args[0];
 }
 
+std::string _id_2(std::vector<std::string> args){
+	return args[1];
+}
+
 std::string __cmp(std::vector<std::string> args){
 	return std::to_string(args[0] == args[1]);
 }
 
-std::string _at(std::vector<std::string> args){ // @ -> at -> Append To.
-	std::string i_result = "";
-	i_result += args[0];
-	for (int i = 0; i < args[1].size(); i++){
-		i_result += args[1][i];
-	}
-	return i_result;
+std::string _if(std::vector<std::string> args){
+        if (std::stoi(args[0])){
+          return lc_eval("[_xfun \"" + args[1] + "\"]");
+        } else {
+          return lc_eval("[_xfun \"" + args[2] + "\"]");
+        }
 }
+
+// std::string _at(std::vector<std::string> args){ // @ -> at -> Append To.
+	// std::string i_result = "";
+	// return i_result;
+// }
 
 
 int main (int argc, char** argv) {
@@ -390,8 +398,10 @@ int main (int argc, char** argv) {
 				{"bits", _let},
 				{"id", _id},
 				{"cmp", __cmp},
-				{"@", _at},
-				{"appendto", _at}};
+				// {"@", _at},
+				// {"appendto", _at},
+                {"if", _if},
+                {"id_2", _id_2}};
 	std::string res = "";
 	while (input != "exit") {
 		input = read_a_line("blade -|>>> ");
