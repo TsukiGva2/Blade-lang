@@ -236,6 +236,7 @@ std::string lc_eval(std::string expr){
 			temp = "";
 		}
 	}
+	std::remove(temp.begin(), temp.end(), ' ');
 	if (funcs_map.find(temp)
 		!= funcs_map.end() && !instr){
 		tempfun = funcs_map[temp];
@@ -248,7 +249,7 @@ std::string lc_eval(std::string expr){
 		if (vars.find(temp) != vars.end() && !instr) {
 			args.push_back(vars[temp]);
 		}
-		else {
+		else if (!temp.empty()){
 			args.push_back(temp);
 		}
 	}
