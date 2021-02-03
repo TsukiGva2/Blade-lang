@@ -3,7 +3,7 @@
 */
 
 /*  just for some context
-	i'm making lambda-clip
+	i'm making Blade
 	this is the name of the
 	language we(or i) will
 	be implementing,
@@ -85,6 +85,7 @@
 #include <string>
 #include <cstdlib>
 #include <algorithm>
+#include <regex>
 #define endl std::endl
 
  /* if you read the page on
@@ -177,27 +178,30 @@ std::string lc_eval(std::string expr){
 	std::map<int,int> depth_index;
 	std::vector<int> depths;
 	std::vector<std::string> args;
+
+	bool instr = false;
 	
 	for (int i = 0; i < expr.size(); i++){
-		if (expr[i] == '[') {
+		if (expr[i] == '"') instr = !instr;
+		if (expr[i] == '[' && !instr) {
 			acc += 1;
 			depths.push_back(acc);
 		}
-		else if (expr[i] == ']') {
+		else if (expr[i] == ']' && !instr) {
 			acc -= 1;
 			depths.push_back(acc);
 		}
 		if (depth_index.find(acc) == depth_index.end())
 			depth_index[acc] = i;
 	}
+	instr = false;
 	if (acc != 0){
 		return "SYNTAX-ERROR: wrong number of parentheses.";
 	}
 	int maxd_index = depth_index[max_element(depths)];
 	int replace_end = 0;
-	bool instr = false;
 	for (int i = maxd_index+1; i < expr.size(); i++){
-		if (expr[i] == ']') {
+		if (expr[i] == ']' && !instr) {
 			replace_end = i+1;
 			break;
 		}
@@ -304,39 +308,24 @@ std::string div(std::vector<std::string> nums){
 }
 
 std::string execfun(std::vector<std::string> args){
-	std::string resexpr = "";
-	std::string madefun = args[0];
-	std::string tempconv;
-	bool nomatch = false;
-	for (int i = 0; i < madefun.size(); i++){
-		nomatch = false;
-		switch(madefun[i]) {
-			case '$':
-				tempconv = "";
-				tempconv += madefun[i+1];
-				if (globl_args.size() < std::stoi(madefun)-1){
-					resexpr += globl_args[std::stoi(tempconv)-1];
-				} else {
-					return "too few arguments!";
-				}
-			break;
-			case '(':
-				resexpr += "[";
-			break;
-			case ')':
-				resexpr += "]";
-			break;
-			case '\'':
-				resexpr += "\"";
-			break;
-			default:
-				nomatch = true;
-		}
-		if (madefun[i-1] != '$' && nomatch){
-			resexpr += madefun[i];
-		}
+	// replace all ('s and )'s for ['s and ]'s
+	// also replace single quotes for double quotes
+	// then finally replace $X's for the right globl_args's index
+	// pass the resulting string to lc_eval
+	std::string txt = args[0];
+	std::regex re("'");
+	txt = std::regex_replace(txt,re,"\"");
+	re = "\\$([1-9])";
+	std::smatch m;
+	std::regex sx("");
+	std::string temp_ = "";
+	while (std::regex_search(txt,m,re)){
+		temp_ = "\\$";
+		temp_ += m[1];
+		sx = temp_;
+		txt = std::regex_replace(txt,sx,globl_args[std::stoi(m[1])-1]);
 	}
-	return lc_eval(resexpr);
+	return lc_eval(txt);
 }
 
 std::string makefun(std::vector<std::string> exprs){
@@ -346,7 +335,7 @@ std::string makefun(std::vector<std::string> exprs){
 	return usfuns_map[*exprs.begin()];
 }
 
-std::string _bit(std::vector<std::string> binds){
+std::string bit_(std::vector<std::string> binds){
 	if (binds.size() < 2){
 		return "too few arguments for _bit";
 	}
@@ -357,7 +346,7 @@ std::string _bit(std::vector<std::string> binds){
 	return vars[binds[0]];
 }
 
-std::string _let(std::vector<std::string> binds){
+std::string let_(std::vector<std::string> binds){
 	if (binds.size() < 2){
 		return "too few arguments for _let";
 	}
@@ -365,15 +354,15 @@ std::string _let(std::vector<std::string> binds){
 	return vars[binds[0]];
 }
 
-std::string _id(std::vector<std::string> args){
+std::string id_(std::vector<std::string> args){
 	return *(args.begin());
 }
 
-std::string _id_2(std::vector<std::string> args){
+std::string id_2(std::vector<std::string> args){
 	return *(args.begin()+1);
 }
 
-std::string __cmp(std::vector<std::string> args){
+std::string cmp_(std::vector<std::string> args){
 	if (args.size() < 2){
 		return "too few arguments for compare";
 	}
@@ -403,6 +392,30 @@ std::string _at(std::vector<std::string> args){ // @ -> at -> Append To.
 	return result;
 }
 
+std::string split_(std::vector<std::string> args){
+	std::string txt = args[0];
+	std::vector<std::string> strs;
+	std::remove(args[1].begin(), args[1].end(), ' ');
+	char ch = args[1][0];
+    size_t pos = txt.find( ch );
+    size_t initialPos = 0;
+    while( pos != std::string::npos ) {
+        strs.push_back( txt.substr( initialPos, pos - initialPos ) );
+        initialPos = pos + 1;
+
+        pos = txt.find( ch, initialPos );
+    }
+
+    strs.push_back( txt.substr( initialPos, std::min( pos, txt.size() ) - initialPos + 1 ) );
+
+	std::string res = "";
+
+	for (std::string b : strs) {
+		res += b + " ";
+	}
+
+    return res;
+}
 
 int main (int argc, char** argv) {
 // first, i created a map
@@ -410,21 +423,23 @@ int main (int argc, char** argv) {
 // so it maps a std::string, i.e "double quoted text"
 // to a function pointer(FnPtr).
 	std::string input = "a";
-	funcs_map = {{"+",add},
-				{"-",sub},
-				{"*",mul},
-				{"/",div},
-				{"_xfun",execfun},
+	funcs_map = {
+				{"+", 		add},
+				{"-",  		sub},
+				{"*",  		mul},
+				{"/",  		div},
+				{"_xfun",   execfun},
 				{"makefun", makefun},
-				{"_bit", _bit},
-				{"let", _let},
-				{"bits", _let},
-				{"id", _id},
-				{"cmp", __cmp},
-				{"@", _at},
-				{"appendto", _at},
-                {"if", _if},
-                {"id_2", _id_2}};
+				{"_bit",    bit_},
+				{"let",     let_},
+				{"bits",    let_},
+				{"id",      id_},
+				{"cmp", 	cmp_},
+				{"@", 		_at},
+				{"appendto",_at},
+                {"if", 		_if},
+                {"split", 	split_},
+                {"id_2", id_2}};
 	std::string res = "";
 	while (input != "exit") {
 		input = read_a_line("blade -|>>> ");
