@@ -283,9 +283,9 @@ std::string sub(std::vector<std::string> nums){
 }
 
 std::string mul(std::vector<std::string> nums){
-	int acc = 1;
+	long int acc = 1;
 	for (std::string i : nums) {
-		acc *= std::stoi(i);
+		acc *= std::stol(i);
 	}
 	return std::to_string(acc);
 }
