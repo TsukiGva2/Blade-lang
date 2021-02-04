@@ -68,6 +68,23 @@ Or you can do it the lispy way:
     ...
     retrieved: 4
 
+The lispy way has some advantages when using operators on lists, because it makes the code more readable
+
+    blade -|>>> [+ 1 2 3 4 5 6 7 8 9 10]
+    ...
+    
+Instead of doing
+
+    blade -|>>> [1 + 2 + 3 + 4 ...]
+    ...
+
 The way you do it doesn't actually matter, and btw, the math notation on the language is actually a bug in the parser.
 
 > it's not a bug, it's a feature!
+
+So, the mathematical functions are the following:
+
+    * -> multiplication "[* 2 3] = 6" or "[2 * 3] = 6"
+    / -> division "[/ 3 1] = 3" or "[3 / 1] = 3"
+    + -> addition "[1 + 2]"
+    - -> subtraction "[5 - 2]"
