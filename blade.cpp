@@ -1,7 +1,3 @@
-/* i made this code for a youtube series so just
-   ignore the "we"s and "our"s
-*/
-
 /*  just for some context
 	i'm making Blade
 	this is the name of the
@@ -146,12 +142,15 @@ std::map<std::string, std::string> usfuns_map;
 std::vector<std::string> globl_args;
 std::map<std::string, std::string> vars;
 
+std::regex is_number("(-|\\+)??\\d+(\\.\\d+)??");
+
 std::string lc_eval(std::string expr){
 /* 
 1. detect the innermost function [x]
 2. call that function            [x]
 3. return to 1                   [x]
 */
+
 	std::cout << "got: " << expr << endl;
 	FnPtr tempfun = err;
 	std::string temp;
@@ -196,7 +195,7 @@ std::string lc_eval(std::string expr){
 	if (instr) return "SYNTAX-ERROR: no matching double quote. err-unfinished-str";
 
 	if (acc != 0){
-		return "SYNTAX-ERROR: wrong number of parenthesis. err-unbalanced-parens";
+		return "SYNTAX-ERROR: wrong number of brackets. err-unbalanced-brackets";
 	}
 
 	int maxd_index = depth_index[max_element(depths)];
@@ -205,7 +204,6 @@ std::string lc_eval(std::string expr){
 	for (int i = maxd_index+1; i < expr.size(); i++){
 		if (expr[i] == ']' && !instr) {
 			replace_end = i+1;
-			break;
 		}
 
 		if (expr[i] == '"' && !instr){
@@ -213,17 +211,15 @@ std::string lc_eval(std::string expr){
 			continue;
 		}
 
-		if (!((expr[i] == ' ' && !instr && expr[i-1] != '"') || (expr[i] == '"' && instr))){ // XXX
+		if (!((expr[i] == ' ' && !instr && expr[i-1] != '"') || (expr[i] == '"' && instr) || (expr[i] == ']' && !instr))){ // XXX
 			temp += expr[i];
 		} else {
 			if (!instr){
 				std::remove(temp.begin(), temp.end(), ' ');
 			}
 
-			if (funcs_map.find(temp)
-				!= funcs_map.end() && !instr){
-				tempfun = funcs_map[temp];
-			} else if (usfuns_map.find(temp) != usfuns_map.end() && !instr){
+			if (funcs_map.find(temp) != funcs_map.end() && !instr) tempfun = funcs_map[temp];
+			else if (usfuns_map.find(temp) != usfuns_map.end() && !instr){
 				ufun = temp;
 				userfun = true;
 			} else {
@@ -235,34 +231,21 @@ std::string lc_eval(std::string expr){
 			}
 
 			instr = false;
+			if (expr[i] == ']' && !instr) break;
 			temp = "";
 		}
 	}
-	std::remove(temp.begin(), temp.end(), ' ');
-	if (funcs_map.find(temp)
-		!= funcs_map.end() && !instr){
-		tempfun = funcs_map[temp];
-	}
-	else if (usfuns_map.find(temp) != usfuns_map.end() && !instr){
-		ufun = temp;
-		userfun = true;
-	}
-	else {
-		if (vars.find(temp) != vars.end() && !instr) {
-			args.push_back(vars[temp]);
-		}
-		else if (!temp.empty()){
-			args.push_back(temp);
-		}
-	}
 	std::string result;
-	if (!userfun)
-		result = tempfun(args);
+	if (!userfun) result = tempfun(args);
 	else {
 		globl_args = args;
 		result = lc_eval(usfuns_map[ufun]);
 	}
+
 	if (max_element(depths) < 2) return result;
+	
+	// else
+	
 	return lc_eval(replace_str(expr,maxd_index,replace_end,result));
 }
 
@@ -270,16 +253,21 @@ std::string lc_eval(std::string expr){
 std::string add(std::vector<std::string> nums){
 	int acc = 0;
 	for (std::string i : nums) {
-		acc += std::stoi(i);
+		if (std::regex_match(i, is_number)) { acc += std::stoi(i); }
 	}
 	return std::to_string(acc);
 }
 
 std::string sub(std::vector<std::string> nums){
-	int acc = std::stoi(nums[0]);
+	int acc = 0;
+	if (std::regex_match(nums[0], is_number)) {
+		acc = std::stoi(nums[0]);
+	}
 	std::vector<std::string> numsbf(nums.begin()+1, nums.end());
 	for (std::string i : numsbf) {
-		acc -= std::stoi(i);
+		if (std::regex_match(i, is_number)) {
+			acc -= std::stoi(i);
+		}
 	}
 	return std::to_string(acc);
 }
@@ -287,21 +275,28 @@ std::string sub(std::vector<std::string> nums){
 std::string mul(std::vector<std::string> nums){
 	long int acc = 1;
 	for (std::string i : nums) {
-		acc *= std::stol(i);
+		if (std::regex_match(i, is_number)) {
+			acc *= std::stol(i);
+		}
 	}
 	return std::to_string(acc);
 }
 
 
 std::string div(std::vector<std::string> nums){
-	float acc = std::stof(nums[0]);
+	double acc = 1;
+	if (std::regex_match(nums[0], is_number)) {
+		acc = std::stof(nums[0]);
+	}
 	std::vector<std::string> numsbf(nums.begin()+1, nums.end());
 	for (std::string i : numsbf) {
-		if (std::stof(i) != 0){
-			acc /= std::stof(i);
-		}
-		else {
-			return "can't divide by 0";
+		if (std::regex_match(i, is_number)) {
+			if (std::stof(i) != 0){
+				acc /= std::stof(i);
+			}
+			else {
+				return "can't divide by 0";
+			}
 		}
 	}
 	// solution
