@@ -124,24 +124,19 @@ std::string read_a_line(std::string p){
 int max_element(std::vector<int> arr){
 	int grtr = 0;
 	for (int i : arr) {
-		if (i > grtr) grtr = i;
+		grtr = std::max(i, grtr);
 	}
 	return grtr;
 }
 
-std::string err (std::vector<std::string> ignored){
+std::string err (std::vector<std::string> dummy){
 	return "error";
 }
 
 std::string replace_str (std::string str, int start, int end, std::string new_str) {
-	std::string result = "";
-	for (int i = 0; i < start && i < str.size(); i++){
-		result += str[i];
-	}
+	std::string result = str.substr(0,start);
 	result += new_str;
-	for (int i = end; i < str.size(); i++) {
-		result += str[i];
-	}
+	result += str.substr(std::min((int)str.size(), end));
 	return result;
 }
 
@@ -154,8 +149,8 @@ std::map<std::string, std::string> vars;
 std::string lc_eval(std::string expr){
 /* 
 1. detect the innermost function [x]
-2. call that function [x]
-3. return to 1  [x]
+2. call that function            [x]
+3. return to 1                   [x]
 */
 	std::cout << "got: " << expr << endl;
 	FnPtr tempfun = err;
@@ -171,8 +166,8 @@ std::string lc_eval(std::string expr){
 	//-         1 1 1     1 1 1
 	//  [ [ [ [ ] ] ] [ [ ] ] ]
 	//+ 1 1 1 1       1 1   
-	//  you do + 1 for the ones from the bottom
-	//  and -1 for the ones at the top
+	//  you do + 1 for the opening parens
+	//  and - 1 for the closing ones
 
 	int acc = 0;
 	std::map<int,int> depth_index;
@@ -183,55 +178,62 @@ std::string lc_eval(std::string expr){
 	
 	for (int i = 0; i < expr.size(); i++){
 		if (expr[i] == '"') instr = !instr;
+
 		if (expr[i] == '[' && !instr) {
 			acc += 1;
 			depths.push_back(acc);
 		}
+
 		else if (expr[i] == ']' && !instr) {
 			acc -= 1;
 			depths.push_back(acc);
 		}
+
 		if (depth_index.find(acc) == depth_index.end())
 			depth_index[acc] = i;
 	}
-	instr = false;
+
+	if (instr) return "SYNTAX-ERROR: no matching double quote. err-unfinished-str";
+
 	if (acc != 0){
-		return "SYNTAX-ERROR: wrong number of parentheses.";
+		return "SYNTAX-ERROR: wrong number of parenthesis. err-unbalanced-parens";
 	}
+
 	int maxd_index = depth_index[max_element(depths)];
 	int replace_end = 0;
+
 	for (int i = maxd_index+1; i < expr.size(); i++){
 		if (expr[i] == ']' && !instr) {
 			replace_end = i+1;
 			break;
 		}
+
 		if (expr[i] == '"' && !instr){
 			instr = true;
 			continue;
 		}
-		if (!((expr[i] == ' ' && !instr && expr[i-1] != '"') || (expr[i] == '"' && instr))){
+
+		if (!((expr[i] == ' ' && !instr && expr[i-1] != '"') || (expr[i] == '"' && instr))){ // XXX
 			temp += expr[i];
-		}
-		else {
+		} else {
 			if (!instr){
 				std::remove(temp.begin(), temp.end(), ' ');
 			}
+
 			if (funcs_map.find(temp)
 				!= funcs_map.end() && !instr){
 				tempfun = funcs_map[temp];
-			}
-			else if (usfuns_map.find(temp) != usfuns_map.end() && !instr){
+			} else if (usfuns_map.find(temp) != usfuns_map.end() && !instr){
 				ufun = temp;
 				userfun = true;
-			}
-			else {
+			} else {
 				if (vars.find(temp) != vars.end() && !instr) {
 					args.push_back(vars[temp]);
-				}
-				else if (!temp.empty()){
+				} else if (!temp.empty()){
 					args.push_back(temp);
 				}
 			}
+
 			instr = false;
 			temp = "";
 		}
